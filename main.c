@@ -1,9 +1,14 @@
+#define TAG_REQ 1;
+#define TAG_DATA 1;
+#define TAG_END 1;
+#define MAITRE 0;
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>	/* chronometrage */
 #include <string.h>     /* pour memset */
 #include <math.h>
+#include <mpi.h>
 #include <sys/time.h>
 
 #include "rasterfile.h"
@@ -208,7 +213,7 @@ int main(int argc, char *argv[]) {
   double xmin, ymin;
   double xmax, ymax;
   /* Dimension de l'image */
-  int w,h;
+  int w,h,h_loc;
   /* Pas d'incrementation */
   double xinc, yinc;
   /* Profondeur d'iteration */
@@ -216,14 +221,18 @@ int main(int argc, char *argv[]) {
   /* Image resultat */
   unsigned char	*ima, *pima;
   /* Variables intermediaires */
-  int  i, j;
+  int  i, j, nb_lignes;
   double x, y;
   /* Chronometrage */
   double debut, fin;
+  /* Debut Parallélisation*/
+
+  MPI_Init(&argc, &argv);
+  MPI_Comm_size (MPI_COMM_WORLD, &p );
+  MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
   /* debut du chronometrage */
   debut = my_gettimeofday();
-
 
   if( argc == 1) fprintf( stderr, "%s\n", info);
 
@@ -232,6 +241,7 @@ int main(int argc, char *argv[]) {
   xmax =  2; ymax =  2;
   w = h = 800;
   prof = 10000;
+  nb_lignes = 10;
 
   /* Recuperation des parametres */
   if( argc > 1) w    = atoi(argv[1]);
@@ -246,20 +256,33 @@ int main(int argc, char *argv[]) {
   xinc = (xmax - xmin) / (w-1);
   yinc = (ymax - ymin) / (h-1);
 
+  //nb_blocks = h/nb_lignes; // calcul nb blocks
+  //h_loc=h/p;
+  if(h%nb_lignes !=0){
+      fprintf("la division n'est pas entiere");
+      MPI_Finalize();
+  }
+
   /* affichage parametres pour verificatrion */
   fprintf( stderr, "Domaine: {[%lg,%lg]x[%lg,%lg]}\n", xmin, ymin, xmax, ymax);
   fprintf( stderr, "Increment : %lg %lg\n", xinc, yinc);
   fprintf( stderr, "Prof: %d\n",  prof);
   fprintf( stderr, "Dim image: %dx%d\n", w, h);
 
-  /* Allocation memoire du tableau resultat */
-  pima = ima = (unsigned char *)malloc( w*h*sizeof(unsigned char));
+  if(my_rank == MAITRE){
+    /* Allocation memoire du tableau resultat */
+    pima = ima = (unsigned char *)malloc( w*h*sizeof(unsigned char));
+  }
 
   if( ima == NULL) {
     fprintf( stderr, "Erreur allocation mémoire du tableau \n");
     return 0;
   }
+  int nblock;
 
+  for(i=0, i<p, i++){
+      MPI_Send(nblock, w*h_loc, MPI_CHAR, MAITRE, TAG_REQ, MPI_COMM_WORLD);
+  }
   /* Traitement de la grille point par point */
   y = ymin;
   for (i = 0; i < h; i++) {
