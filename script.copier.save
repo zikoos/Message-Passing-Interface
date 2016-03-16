@@ -1,0 +1,7 @@
+#!/bin/sh
+# Fichier "50fichiers-for"
+
+# la commande "seq a b" compte de a à b
+for numero in `seq 1 50`
+    do touch fichier"$numero"
+do

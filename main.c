@@ -312,7 +312,9 @@ int main(int argc, char *argv[]) {
         MPI_Recv(&pima[i*nbLignes*w], w*nbLignes, MPI_CHAR, status.MPI_SOURCE, DATA, MPI_COMM_WORLD, &status);
         MPI_Send(&indice_bloc, 1, MPI_INT, status.MPI_SOURCE, END, MPI_COMM_WORLD);
       }
+
       }
+
     /* SLAVE */
     if (rang != 0)
       {
@@ -321,6 +323,12 @@ int main(int argc, char *argv[]) {
       {
         y = ymin+(k*nbLignes)*yinc;
         /**************** CALCUL ****************/
+
+
+        /****************************************/
+        #pragma omp parallel
+        {
+        #pragma omp for private(j,x,y,ima) schedule(runtime)
         for (i = 0; i < nbLignes; i++)
           {
             x = xmin;
@@ -331,6 +339,7 @@ int main(int argc, char *argv[]) {
           }
             y += yinc;
           }
+        }
         /****************** FIN ******************/
         MPI_Send(&k, 1, MPI_INT, 0, REQ, MPI_COMM_WORLD);
         MPI_Send(ima, w*nbLignes, MPI_CHAR, 0, DATA, MPI_COMM_WORLD);
